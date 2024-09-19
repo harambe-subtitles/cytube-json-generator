@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dokument</title>
+    <title>Generator JSON</title>
+    <style>
+        #uploadForm {
+            display: none;
+        }
+    </style>
 </head>
 <body>
 <h2>Wygeneruj plik JSON</h2>
@@ -11,8 +16,10 @@
 <label for="title">Tytuł filmu:</label>
 <input type="text" id="title" placeholder="Wprowadź tytuł filmu">
 
+</br></br>
+
 <label for="videoUrl">Video URL:</label>
-<input type="text" id="videoUrl" placeholder="Wprowadź Vido URL">
+<input type="text" id="videoUrl" placeholder="Wprowadź Video URL">
 
 <label for="quality">Jakość:</label>
 <select id="quality">
@@ -23,7 +30,21 @@
 </select>
 
 <button onclick="addField()">Dodaj</button>
+</br></br>
+<button onclick="showSubtitleForm()">Dodaj napisy</button>
 
+</br></br>
+<!-- Ukryty formularz napisy -->
+<form id="uploadForm">
+    <label for="subtitleName">Nazwa napisów:</label>
+    <input type="text" id="subtitleName" placeholder="Wprowadź nazwę napisów">
+    <input type="file" id="fileInput" name="files" multiple required />
+    <button type="button" onclick="addSubtitles()">Dodaj napisy</button>
+</form>
+
+<h3>Dodane napisy:</h3>
+<ul id="subtitles-list"></ul>
+<button onclick="uploadSubtitles()">Wgraj napisy</button>
 
 <h3>Dodane linki:</h3>
 <ul id="fields-list"></ul>
@@ -34,6 +55,7 @@
 
 <script>
     const fields = [];
+    const subtitles = [];
 
     function addField() {
         const urlInput = document.getElementById('videoUrl');
@@ -56,11 +78,72 @@
         }
     }
 
+    
+
+function addSubtitles() {
+    const fileInput = document.getElementById('fileInput');
+    const subtitleName = document.getElementById('subtitleName').value.trim();
+    const files = fileInput.files;
+
+    if (!subtitleName) {
+        alert('Proszę wprowadzić nazwę napisów.');
+        return;
+    }
+
+    if (files.length === 0) {
+        alert('Proszę dodać pliki.');
+        return;
+    }
+
+    const MAX_FILE_SIZE_MB = 1; // Max file size in MB
+    const allowedExtension = '.vtt';
+
+    for (const file of files) {
+        // Check file extension
+        if (!file.name.endsWith(allowedExtension)) {
+            alert(`Plik ${file.name} nie jest plikiem VTT.`);
+            continue;
+        }
+
+        // Check file size
+        const fileSizeMB = file.size / (1024 * 1024); // Size in MB
+        if (fileSizeMB > MAX_FILE_SIZE_MB) {
+            alert(`Plik ${file.name} jest za duży. Maksymalny rozmiar to ${MAX_FILE_SIZE_MB} MB.`);
+            continue;
+        }
+
+        if (!subtitles.some(subtitle => subtitle.file.name === file.name)) {
+            const isDefault = subtitles.length === 0; // First subtitle is set as default
+            const subtitleObj = {
+                name: subtitleName,
+                file: file,
+                default: isDefault
+            };
+            subtitles.push(subtitleObj);
+
+            // Update the list in the UI
+            const subtitleElement = document.createElement('li');
+            subtitleElement.innerHTML = `
+                ${file.name} (${subtitleName}) 
+                <input type="radio" name="defaultSubtitle" ${isDefault ? 'checked' : ''} onchange="setDefaultSubtitle(${subtitles.length - 1})"> Domyślne
+            `;
+            document.getElementById('subtitles-list').appendChild(subtitleElement);
+        }
+    }
+
+    fileInput.value = ''; // Clear input field
+    document.getElementById('subtitleName').value = ''; // Clear subtitle name
+
+    updateSubtitleList();
+}
+
+
+
     function clearFields() {
-        // Clear the fields array
         fields.length = 0;
-        // Clear the fields list in the DOM
+        subtitles.length = 0;
         document.getElementById('fields-list').innerHTML = '';
+        document.getElementById('subtitles-list').innerHTML = '';
     }
 
     async function generateJSON() {
@@ -92,21 +175,88 @@
             const durations = await Promise.all(durationPromises);
             const totalDuration = Math.max(...durations); // Use the maximum duration
 
-            // Construct the query parameters
-            const apiUrl = `https://cytube.vercel.app/api/cytube?title=${encodeURIComponent(title)}&urls=${encodeURIComponent(urls.join(','))}&qualities=${encodeURIComponent(qualities.join(','))}&duration=${totalDuration}`;
+	    const trackUrls = subtitles.map(subtitle => {
+              // Replace with actual URL generation logic
+              return `https://raw.githubusercontent.com/harambe-subtitles/subtitles/refs/heads/main/${subtitle.file.name}`;
+            }).join(',');
+	    const trackNames = subtitles.map(subtitle => subtitle.name).join(',');
+	    const trackDefault = subtitles.map(subtitle => subtitle.default ? 'true' : 'false').join(',');
+
+            const apiUrl = `https://cytube.vercel.app/api/cytube?title=${encodeURIComponent(title)}&urls=${encodeURIComponent(urls.join(','))}&qualities=${encodeURIComponent(qualities.join(','))}&duration=${totalDuration}&trackUrls=${encodeURIComponent(trackUrls)}&trackNames=${encodeURIComponent(trackNames)}&trackDefault=${encodeURIComponent(trackDefault)}`;
+
 
             console.log('API URL:', apiUrl); // Debugging line
 
-            // Make the API call
             const response = await fetch(apiUrl);
             const result = await response.json();
-            console.log(result.fileName); // Handle the API response
-	    const div = document.getElementById('result');
+            console.log(result.fileName); 
+	        const div = document.getElementById('result');
             div.innerHTML = `https://cdn.jsdelivr.net/gh/harambe-subtitles/cytube-json@main/${result.fileName}`;
         } catch (error) {
             console.log(error);
         }
     }
+
+    async function uploadSubtitles() {
+    if (subtitles.length === 0) {
+        alert('Please add subtitles before uploading.');
+        return;
+    }
+
+    // Collect file data to send to the backend
+    const subtitleFiles = await Promise.all(subtitles.map(async subtitle => ({
+        fileName: subtitle.file.name,        // The file name
+        content: await subtitle.file.text()  // The file content as text
+    })));
+
+    try {
+        const response = await fetch('https://cytube.vercel.app/api/upload', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ subtitleFiles }),  // Send file names and content to the backend
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            console.log(result.message);
+            alert('Subtitles uploaded successfully.');
+        } else {
+            throw new Error(result.message);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('There was an error uploading the subtitles.');
+    }
+}
+    function setDefaultSubtitle(index) {
+    subtitles.forEach((subtitle, i) => {
+        subtitle.default = i === index;
+    });
+    // Refresh the subtitle list to reflect changes
+    updateSubtitleList();
+}
+
+    function showSubtitleForm() {
+        const uploadForm = document.getElementById('uploadForm');
+        uploadForm.style.display = 'block';
+    }
+
+    function updateSubtitleList() {
+    const subtitleList = document.getElementById('subtitles-list');
+    subtitleList.innerHTML = '';
+
+    subtitles.forEach((subtitle, index) => {
+        const subtitleElement = document.createElement('li');
+        subtitleElement.innerHTML = `
+            ${subtitle.file.name} (${subtitle.name}) 
+            <input type="radio" name="defaultSubtitle" ${subtitle.default ? 'checked' : ''} onchange="setDefaultSubtitle(${index})"> Domyślne
+        `;
+        subtitleList.appendChild(subtitleElement);
+    });
+}
+
 </script>
 
 </body>
