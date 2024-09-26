@@ -11,7 +11,7 @@
     </style>
 </head>
 <body>
-<h2>Wygeneruj plik JSON</h2>
+<!-- <h2>Wygeneruj plik JSON</h2>
 
 <label for="title">Tytuł filmu:</label>
 <input type="text" id="title" placeholder="Wprowadź tytuł filmu">
@@ -30,7 +30,7 @@
 </select>
 
 <button onclick="addField()">Dodaj</button>
-</br></br>
+</br></br> -->
 <button onclick="showSubtitleForm()">Dodaj napisy</button>
 
 </br></br>
@@ -46,12 +46,14 @@
 <ul id="subtitles-list"></ul>
 <button onclick="uploadSubtitles()">Wgraj napisy</button>
 
-<h3>Dodane linki:</h3>
-<ul id="fields-list"></ul>
+<div id="subtitles"></div>
 
-<button onclick="generateJSON()">Wygeneruj plik JSON</button>
+<!-- <h3>Dodane linki:</h3>
+<ul id="fields-list"></ul> -->
+
+<!-- <button onclick="generateJSON()">Wygeneruj plik JSON</button>
 <button onclick="clearFields()">Wyczyść</button>
-<div id="result"></div>
+<div id="result"></div> -->
 
 <script>
     const fields = [];
@@ -191,8 +193,7 @@ function addSubtitles() {
             const result = await response.json();
             console.log(result.fileName); 
 	        const div = document.getElementById('result');
-            // div.innerHTML = `https://cdn.jsdelivr.net/gh/harambe-subtitles/cytube-json@main/${result.fileName}`;
-            div.innerHTML = `https://raw.githubusercontent.com/harambe-subtitles/subtitles/refs/heads/main/${subtitle.file.name}`;
+            div.innerHTML = `https://cdn.jsdelivr.net/gh/harambe-subtitles/cytube-json@main/${result.fileName}`;
         } catch (error) {
             console.log(error);
         }
@@ -226,10 +227,14 @@ function addSubtitles() {
         } else {
             throw new Error(result.message);
         }
+        
     } catch (error) {
         console.error('Error:', error);
         alert('There was an error uploading the subtitles.');
     }
+
+    const div = document.getElementById('subtitles');
+    div.innerHTML = `https://raw.githubusercontent.com/harambe-subtitles/subtitles/refs/heads/main/${subtitle.file.name}`;
 }
     function setDefaultSubtitle(index) {
     subtitles.forEach((subtitle, i) => {
