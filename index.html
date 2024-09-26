@@ -96,14 +96,14 @@ function addSubtitles() {
     }
 
     const MAX_FILE_SIZE_MB = 1; // Max file size in MB
-    const allowedExtension = '.vtt';
+    // const allowedExtension = '.vtt';
 
     for (const file of files) {
         // Check file extension
-        if (!file.name.endsWith(allowedExtension)) {
-            alert(`Plik ${file.name} nie jest plikiem VTT.`);
-            continue;
-        }
+        // if (!file.name.endsWith(allowedExtension)) {
+        //     alert(`Plik ${file.name} nie jest plikiem VTT.`);
+        //     continue;
+        // }
 
         // Check file size
         const fileSizeMB = file.size / (1024 * 1024); // Size in MB
@@ -191,7 +191,8 @@ function addSubtitles() {
             const result = await response.json();
             console.log(result.fileName); 
 	        const div = document.getElementById('result');
-            div.innerHTML = `https://cdn.jsdelivr.net/gh/harambe-subtitles/cytube-json@main/${result.fileName}`;
+            // div.innerHTML = `https://cdn.jsdelivr.net/gh/harambe-subtitles/cytube-json@main/${result.fileName}`;
+            div.innerHTML = `https://raw.githubusercontent.com/harambe-subtitles/subtitles/refs/heads/main/${subtitle.file.name}`;
         } catch (error) {
             console.log(error);
         }
