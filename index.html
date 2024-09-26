@@ -234,7 +234,7 @@ function addSubtitles() {
     }
 
     const div = document.getElementById('subtitles');
-    div.innerHTML = `https://raw.githubusercontent.com/harambe-subtitles/subtitles/refs/heads/main/${subtitle.file.name}`;
+    div.innerHTML = `https://raw.githubusercontent.com/harambe-subtitles/subtitles/refs/heads/main/${subtitles[0].file.name}`;
 }
     function setDefaultSubtitle(index) {
     subtitles.forEach((subtitle, i) => {
